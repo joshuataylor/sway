@@ -363,7 +363,6 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	detect_proprietary(allow_unsupported_gpu);
 	increase_nofile_limit();
 
 	// handle SIGTERM signals
