@@ -11,6 +11,7 @@
 #include <wlr/config.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_content_type_v1.h>
 #include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_drm_lease_v1.h>
 #include <wlr/types/wlr_drm.h>
@@ -49,6 +50,9 @@
 #include "sway/xwayland.h"
 #endif
 
+#define SWAY_XDG_SHELL_VERSION 2
+#define SWAY_LAYER_SHELL_VERSION 3
+
 static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
 	/* We only offer non-desktop outputs, but in the future we might want to do
 	 * more logic here. */
@@ -61,14 +65,12 @@ static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
 	}
 }
 
-#define SWAY_XDG_SHELL_VERSION	2
-
 bool server_init(struct sway_server *server) {
 	sway_log(SWAY_DEBUG, "Initializing Wayland server");
 	server->wl_display = wl_display_create();
 	server->wl_event_loop = wl_display_get_event_loop(server->wl_display);
-	server->backend = wlr_backend_autocreate(server->wl_display);
 
+	server->backend = wlr_backend_autocreate(server->wl_display, &server->session);
 	if (!server->backend) {
 		sway_log(SWAY_ERROR, "Unable to create backend");
 		return false;
@@ -121,7 +123,8 @@ bool server_init(struct sway_server *server) {
 	server->idle_inhibit_manager_v1 =
 		sway_idle_inhibit_manager_v1_create(server->wl_display, server->idle);
 
-	server->layer_shell = wlr_layer_shell_v1_create(server->wl_display);
+	server->layer_shell = wlr_layer_shell_v1_create(server->wl_display,
+		SWAY_LAYER_SHELL_VERSION);
 	wl_signal_add(&server->layer_shell->events.new_surface,
 		&server->layer_shell_surface);
 	server->layer_shell_surface.notify = handle_layer_shell_surface;
@@ -203,6 +206,8 @@ bool server_init(struct sway_server *server) {
 	wlr_primary_selection_v1_device_manager_create(server->wl_display);
 	wlr_viewporter_create(server->wl_display);
 	wlr_single_pixel_buffer_manager_v1_create(server->wl_display);
+	server->content_type_manager_v1 =
+		wlr_content_type_manager_v1_create(server->wl_display, 1);
 
 	struct wlr_xdg_foreign_registry *foreign_registry =
 		wlr_xdg_foreign_registry_create(server->wl_display);
