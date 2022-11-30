@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <wayland-server-core.h>
 #include <wlr/backend.h>
-#include <wlr/backend/session.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
@@ -115,6 +114,8 @@ struct sway_server {
 
 	struct wlr_xdg_activation_v1 *xdg_activation_v1;
 	struct wl_listener xdg_activation_v1_request_activate;
+
+	struct wl_list pending_launcher_ctxs; // launcher_ctx::link
 
 	// The timeout for transactions, after which a transaction is applied
 	// regardless of readiness.

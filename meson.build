@@ -1,7 +1,7 @@
 project(
 	'sway',
 	'c',
-	version: '1.8-dev',
+	version: '1.9-dev',
 	license: 'MIT',
 	meson_version: '>=0.60.0',
 	default_options: [
@@ -43,37 +43,12 @@ subproject(
 	required: false,
 	version: wlroots_version,
 )
-
-jsonc = dependency('json-c', version: '>=0.13')
-pcre2 = dependency('libpcre2-8')
-wayland_server = dependency('wayland-server', version: '>=1.21.0')
-wayland_client = dependency('wayland-client')
-wayland_cursor = dependency('wayland-cursor')
-wayland_egl = dependency('wayland-egl')
-wayland_protos = dependency('wayland-protocols', version: '>=1.24')
 wlroots = dependency('wlroots', version: wlroots_version)
-xkbcommon = dependency('xkbcommon')
-cairo = dependency('cairo')
-pango = dependency('pango')
-pangocairo = dependency('pangocairo')
-gdk_pixbuf = dependency('gdk-pixbuf-2.0', required: get_option('gdk-pixbuf'))
-pixman = dependency('pixman-1')
-glesv2 = dependency('glesv2')
-libevdev = dependency('libevdev')
-libinput = dependency('libinput', version: '>=1.21.0')
-xcb = dependency('xcb', required: get_option('xwayland'))
-drm_full = dependency('libdrm') # only needed for drm_fourcc.h
-drm = drm_full.partial_dependency(compile_args: true, includes: true)
-libudev = dependency('libudev')
-bash_comp = dependency('bash-completion', required: false)
-fish_comp = dependency('fish', required: false)
-math = cc.find_library('m')
-rt = cc.find_library('rt')
-xcb_icccm = dependency('xcb-icccm', required: get_option('xwayland'))
-threads = dependency('threads') # for pthread_setschedparam
-
 wlroots_features = {
 	'xwayland': false,
+	'libinput_backend': false,
+	'gles2_renderer': false,
+	'session': false,
 }
 foreach name, _ : wlroots_features
 	var_name = 'have_' + name.underscorify()
@@ -84,7 +59,34 @@ endforeach
 if get_option('xwayland').enabled() and not wlroots_features['xwayland']
 	error('Cannot enable Xwayland in sway: wlroots has been built without Xwayland support')
 endif
-have_xwayland = xcb.found() and wlroots_features['xwayland']
+
+null_dep = dependency('', required: false)
+
+jsonc = dependency('json-c', version: '>=0.13')
+pcre2 = dependency('libpcre2-8')
+wayland_server = dependency('wayland-server', version: '>=1.21.0')
+wayland_client = dependency('wayland-client')
+wayland_cursor = dependency('wayland-cursor')
+wayland_protos = dependency('wayland-protocols', version: '>=1.24')
+xkbcommon = dependency('xkbcommon')
+cairo = dependency('cairo')
+pango = dependency('pango')
+pangocairo = dependency('pangocairo')
+gdk_pixbuf = dependency('gdk-pixbuf-2.0', required: get_option('gdk-pixbuf'))
+pixman = dependency('pixman-1')
+glesv2 = wlroots_features['gles2_renderer'] ? dependency('glesv2') : null_dep
+libevdev = dependency('libevdev')
+libinput = wlroots_features['libinput_backend'] ? dependency('libinput', version: '>=1.21.0') : null_dep
+xcb = dependency('xcb', required: get_option('xwayland'))
+drm_full = dependency('libdrm') # only needed for drm_fourcc.h
+drm = drm_full.partial_dependency(compile_args: true, includes: true)
+libudev = wlroots_features['libinput_backend'] ? dependency('libudev') : null_dep
+math = cc.find_library('m')
+rt = cc.find_library('rt')
+xcb_icccm = dependency('xcb-icccm', required: get_option('xwayland'))
+threads = dependency('threads') # for pthread_setschedparam
+
+have_xwayland = xcb.found() and xcb_icccm.found() and wlroots_features['xwayland']
 
 if get_option('sd-bus-provider') == 'auto'
 	if not get_option('tray').disabled()
@@ -262,59 +264,7 @@ if get_option('default-wallpaper')
 	install_data(wallpaper_files, install_dir: wallpaper_install_dir)
 endif
 
-if get_option('zsh-completions')
-	zsh_files = files(
-		'completions/zsh/_sway',
-		'completions/zsh/_swaymsg',
-	)
-	zsh_install_dir = join_paths(datadir, 'zsh', 'site-functions')
-
-	install_data(zsh_files, install_dir: zsh_install_dir)
-endif
-
-if get_option('bash-completions')
-	bash_files = files(
-		'completions/bash/sway',
-		'completions/bash/swaymsg',
-	)
-
-	if get_option('swaybar')
-		bash_files += files('completions/bash/swaybar')
-	endif
-
-	if bash_comp.found()
-		bash_install_dir = bash_comp.get_variable(
-			pkgconfig: 'completionsdir',
-			pkgconfig_define: ['datadir', datadir]
-		)
-	else
-		bash_install_dir = join_paths(datadir, 'bash-completion', 'completions')
-	endif
-
-	install_data(bash_files, install_dir: bash_install_dir)
-endif
-
-if get_option('fish-completions')
-	fish_files = files(
-		'completions/fish/sway.fish',
-		'completions/fish/swaymsg.fish',
-	)
-
-	if get_option('swaynag')
-		fish_files += files('completions/fish/swaynag.fish')
-	endif
-
-	if fish_comp.found()
-		fish_install_dir = fish_comp.get_variable(
-			pkgconfig: 'completionsdir',
-			pkgconfig_define: ['datadir', datadir]
-		)
-	else
-		fish_install_dir = join_paths(datadir, 'fish', 'vendor_completions.d')
-	endif
-
-	install_data(fish_files, install_dir: fish_install_dir)
-endif
+subdir('completions')
 
 summary({
 	'xwayland': have_xwayland,
@@ -322,4 +272,3 @@ summary({
 	'tray': have_tray,
 	'man-pages': scdoc.found(),
 }, bool_yn: true)
-

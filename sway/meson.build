@@ -21,11 +21,11 @@ sway_sources = files(
 	'desktop/surface.c',
 	'desktop/transaction.c',
 	'desktop/xdg_shell.c',
+	'desktop/launcher.c',
 
 	'input/input-manager.c',
 	'input/cursor.c',
 	'input/keyboard.c',
-	'input/libinput.c',
 	'input/seat.c',
 	'input/seatop_default.c',
 	'input/seatop_down.c',
@@ -226,12 +226,16 @@ sway_deps = [
 	wayland_server,
 	wlroots,
 	xkbcommon,
+	xcb,
 	xcb_icccm,
 ]
 
 if have_xwayland
 	sway_sources += 'desktop/xwayland.c'
-	sway_deps += xcb
+endif
+
+if wlroots_features['libinput_backend']
+	sway_sources += 'input/libinput.c'
 endif
 
 executable(
